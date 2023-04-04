@@ -243,7 +243,7 @@ app.get('/api/item', async (req, res) => {
                                 }
                         }
                 }
-                item = objFormatBySchema(table, item, decode)
+                item = await objFormatBySchema(table, item, decode);
                 return response(req, res, 100, "success", item);
         }
         catch (err) {
