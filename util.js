@@ -332,9 +332,9 @@ const returnMoment = (d) => {
     let moment = dateString + ' ' + timeString;
     return moment;
 }
-const getQuestions = (length) =>{
+const getQuestions = (length) => {
     let result = [];
-    for(var i = 0;i<length;i++){
+    for (var i = 0; i < length; i++) {
         result.push('?');
     }
     return result;
@@ -434,29 +434,43 @@ const getKoLevelByNum = (num) => {
         return '개발자';
 }
 const commarNumber = (num) => {
-    let str = "";
-    if (typeof num == "number") {
-        str = num.toString();
-    } else {
-        str = num;
+    if(num > 0 && num < 0.000001){
+        return "0.00";
     }
-    if (!str) {
-        return "---";
+    if (!num && num != 0) {
+        return undefined;
+    }
+    let str = "";
+    if (typeof num == "string") {
+        str = num;
+    } else {
+        str = num.toString();
+    }
+
+    let decimal = "";
+    if (str.includes(".")) {
+        decimal = "." + str.split(".")[1].substring(0, 2);
+        str = str.split(".")[0];
+    } else {
+        decimal = "";
+    }
+    if (str?.length <= 3) {
+        return str + decimal;
     }
     let result = "";
     let count = 0;
-    for (var i = str.length - 1; i >= 0; i--) {
-        if (count % 3 == 0 && count != 0) result = "," + result;
+    for (var i = str?.length - 1; i >= 0; i--) {
+        if (count % 3 == 0 && count != 0 && !isNaN(parseInt(str[i]))) result = "," + result;
         result = str[i] + result;
         count++;
     }
-    return result;
+    return result + decimal;
 }
-const initialPay = async (contract) =>{
-    if(contract['is_confirm']==1){
+const initialPay = async (contract) => {
+    if (contract['is_confirm'] == 1) {
         return;
     }
-    let result = await insertQuery(`UPDATE contract_table SET is_confirm=1 WHERE pk=?`,[contract[`pk`]]);
+    let result = await insertQuery(`UPDATE contract_table SET is_confirm=1 WHERE pk=?`, [contract[`pk`]]);
     if (
         contract[`${getEnLevelByNum(0)}_appr`] == 1 &&
         contract[`${getEnLevelByNum(5)}_appr`] == 1 &&
@@ -515,11 +529,48 @@ const initialPay = async (contract) =>{
         }
     }
 }
+const insertItemHistory = async (decode, item_pk, type, price) => {
+    let obj = {
+        user_pk: decode?.pk,
+        item_pk,
+        type,
+        price,
+    }
+    let keys = Object.keys(obj);
+    let values = [];
+    let result_keys = [];
+    for (var i = 0; i < keys.length; i++) {
+        if (obj[keys[i]] || typeof obj[keys[i]] == 'number') {
+            values.push(obj[keys[i]]);
+            result_keys.push(keys[i]);
+        }
+    }
+    let querstions = getQuestions(result_keys.length)
+    let result = await insertQuery(`INSERT INTO history_table (${result_keys.join()}) VALUES (${querstions.join()})`, values);
+}
+const getStringHistoryByNum = (user, num, price, item) => {
+    if (num == 0)
+        return `${user?.nickname} 이(가) 상품을 조회 하였습니다.`;
+    else if (num == 5)
+        return `${user?.nickname} 이(가) 상품에 좋아요를 눌렀습니다.`
+    else if (num == 6)
+        return `${user?.nickname} 이(가) 상품 좋아요를 취소 하였습니다.`
+    else if (num == 10)
+        return `${user?.nickname} 이(가) 상품을 ${commarNumber(price)} ${item?.wallet?.unit}에 경매 하였습니다.`
+    else if (num == 11)
+        return `${user?.nickname} 이(가) 상품 경매를 취소 하였습니다.`
+    else if (num == 15)
+        return `상품이 수정 되었습니다.`
+    else if (num == 20)
+        return `상품이 마감 되었습니다.`
+    else
+        return '---'
+}
 module.exports = {
     checkLevel, lowLevelException, nullRequestParamsOrBody,
     logRequestResponse, logResponse, logRequest,
     getUserPKArrStrWithNewPK, isNotNullOrUndefined,
     namingImagesPath, getSQLnParams,
     nullResponse, lowLevelResponse, response, removeItems, returnMoment, formatPhoneNumber, categoryToNumber, sendAlarm, makeMaxPage, tooMuchRequest,
-    queryPromise, makeHash, commarNumber, getKewordListBySchema, getEnLevelByNum, getKoLevelByNum, getQuestions, getNumByEnLevel, initialPay
+    queryPromise, makeHash, commarNumber, getKewordListBySchema, getEnLevelByNum, getKoLevelByNum, getQuestions, getNumByEnLevel, initialPay, insertItemHistory, getStringHistoryByNum
 }

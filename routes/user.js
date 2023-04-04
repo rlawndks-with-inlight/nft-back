@@ -15,7 +15,7 @@ const { checkLevel, getSQLnParams, getUserPKArrStrWithNewPK,
     lowLevelResponse, response, removeItems, returnMoment, formatPhoneNumber,
     categoryToNumber, sendAlarm, makeMaxPage, queryPromise, makeHash, commarNumber, getKewordListBySchema,
     getEnLevelByNum, getKoLevelByNum,
-    getQuestions, getNumByEnLevel, initialPay
+    getQuestions, getNumByEnLevel, initialPay, insertItemHistory, getStringHistoryByNum
 } = require('../util')
 const {
     getRowsNumWithKeyword, getRowsNum, getAllDatas,
@@ -163,13 +163,17 @@ const addHeart = async (req, res) => {
         }
         let already_heart = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=${decode?.pk} AND item_pk=${item_pk} `);
         already_heart = already_heart?.result;
-        if(already_heart.length > 0){
+        if (already_heart.length > 0) {
             return response(req, res, -100, "이미 좋아요를 누른 상품입니다.", [])
         }
-        let result = await insertQuery(`INSERT INTO heart_table (user_pk, item_pk) VALUES (?, ?)`,[decode?.pk, item_pk]);
+        await db.beginTransaction();
+        let make_history = await insertItemHistory(decode, item_pk, 5, 0);
+        let result = await insertQuery(`INSERT INTO heart_table (user_pk, item_pk) VALUES (?, ?)`, [decode?.pk, item_pk]);
+        await db.commit();
         return response(req, res, 100, "success", []);
     } catch (err) {
         console.log(err)
+        db.rollback();
         return response(req, res, -200, "서버 에러 발생", [])
     }
 }
@@ -180,29 +184,155 @@ const deleteHeart = async (req, res) => {
         if (!decode) {
             return response(req, res, -150, "권한이 없습니다.", []);
         }
-        let result = await insertQuery(`DELETE FROM heart_table WHERE user_pk=? AND item_pk=?`,[decode?.pk, item_pk]);
+        await db.beginTransaction();
+        let make_history = await insertItemHistory(decode, item_pk, 6, 0);
+
+        let result = await insertQuery(`DELETE FROM heart_table WHERE user_pk=? AND item_pk=?`, [decode?.pk, item_pk]);
+        await db.commit();
         return response(req, res, 100, "success", []);
 
     } catch (err) {
         console.log(err)
+        db.rollback();
         return response(req, res, -200, "서버 에러 발생", [])
     }
 }
-const getProduct = async (req, res) =>{
-    try{
+const addAuction = async (req, res) => {
+    try {
+        const { item_pk, price } = req.body;
+        console.log(req.body)
         const decode = checkLevel(req.cookies.token, 0);
-        const {pk} = req.query;
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        let already_auction = await dbQueryList(`SELECT * FROM auction_table WHERE user_pk=${decode?.pk} AND item_pk=${item_pk} `);
+        already_auction = already_auction?.result;
+        if (already_auction.length > 0) {
+            return response(req, res, -100, "이미 경매한 상품입니다.", [])
+        }
+        let item = await dbQueryList(`SELECT * FROM item_table WHERE pk=${item_pk}`);
+        console.log(item)
+        item = item?.result[0];
+        if (price < item?.price) {
+            return response(req, res, -100, "최소 입찰 가격 이상으로 신청해 주세요.", [])
+        }
+        await db.beginTransaction();
+        let make_history = await insertItemHistory(decode, item_pk, 10, price);
+        let result = await insertQuery(`INSERT INTO auction_table (user_pk, item_pk, price) VALUES (?, ?, ?)`, [decode?.pk, item_pk, price]);
+        await db.commit();
+        return response(req, res, 100, "success", []);
+    } catch (err) {
+        console.log(err)
+        db.rollback();
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const deleteAuction = async (req, res) => {
+    try {
+        const { item_pk } = req.body;
+        const decode = checkLevel(req.cookies.token, 0);
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        let auction_history = await dbQueryList(`SELECT * FROM auction_table WHERE user_pk=${decode?.pk} AND item_pk=${item_pk} `);
+        auction_history = auction_history?.result[0];
 
-        let item_sql = `SELECT item_table.*, (SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count, u_t.nickname AS user_nickname, o_t.nickname AS owner_nickname `;
-        item_sql += ` FROM item_table `;
+        await db.beginTransaction();
+        let make_history = await insertItemHistory(decode, item_pk, 11, (-1) * (auction_history?.price ?? 0));
+        let result = await insertQuery(`DELETE FROM auction_table WHERE pk=?`, [auction_history?.pk]);
+        await db.commit();
+        return response(req, res, 100, "success", []);
+
+    } catch (err) {
+        console.log(err)
+        db.rollback();
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const getProduct = async (req, res) => {
+    try {
+        const decode = checkLevel(req.cookies.token, 0);
+        const { pk } = req.query;
+
+        let result_list = [];
+
+        let item_columns = [
+            'item_table.*',
+            '(SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count',
+            'u_t.nickname AS user_nickname',
+            'u_t.profile_img AS user_profile_img',
+            'o_t.nickname AS owner_nickname',
+            'o_t.profile_img AS owner_profile_img',
+        ]
+        let item_sql = `SELECT ${item_columns.join()} FROM item_table`;
         item_sql += ` LEFT JOIN user_table AS u_t ON item_table.user_pk=u_t.pk `;
         item_sql += ` LEFT JOIN user_table AS o_t ON item_table.user_pk=o_t.pk `;
-        item_sql += ` WHERE item_table.pk=${pk} `
-        let item = await dbQueryList(item_sql);
-        item = item?.result[0];
-        item = await objFormatBySchema('item',item,decode);
-        let result_obj = {
-            item:item,
+        item_sql += ` WHERE item_table.pk=${pk} `;
+
+
+        let items_sql = await sqlJoinFormat('item');
+        items_sql = items_sql?.sql;
+        items_sql += ` ORDER BY sort DESC LIMIT 4 `
+        let items = await dbQueryList(items_sql);
+
+        let history_sql = ` SELECT history_table.*, user_table.nickname AS user_nickname, user_table.profile_img AS user_profile_img `
+        history_sql += ` FROM history_table `
+        history_sql += ` LEFT JOIN user_table ON history_table.user_pk=user_table.pk `;
+        history_sql += ` WHERE item_pk=${pk} ORDER BY pk DESC `;
+        let history = await dbQueryList(history_sql);
+        history = history?.result;
+
+        let sql_list = [
+            { table: 'item', sql: item_sql, type: 'obj' },
+            { table: 'items', sql: items_sql, type: 'list' },
+            { table: 'history', sql: history_sql, type: 'list' },
+        ];
+
+        for (var i = 0; i < sql_list.length; i++) {
+            result_list.push(queryPromise(sql_list[i]?.table, sql_list[i]?.sql));
+        }
+        for (var i = 0; i < result_list.length; i++) {
+            await result_list[i];
+        }
+        let result_obj = {};
+        for (var i = 0; i < sql_list.length; i++) {
+            result_list.push(queryPromise(sql_list[i].table, sql_list[i].sql, sql_list[i].type));
+        }
+        for (var i = 0; i < result_list.length; i++) {
+            await result_list[i];
+        }
+        let result = (await when(result_list));
+        for (var i = 0; i < (await result).length; i++) {
+            result_obj[(await result[i])?.table] = (await result[i])?.data;
+        }
+
+        result_obj['item'] = await objFormatBySchema('item', result_obj['item'], decode);
+        result_obj['items'] = await listFormatBySchema('item', result_obj['items'], decode);
+
+
+        let wallet = await dbQueryList(`SELECT * FROM wallet_table WHERE pk=${result_obj['item']?.wallet_pk}`);
+        wallet = wallet?.result[0];
+        result_obj['item']['wallet'] = wallet;
+
+        let max_price = await dbQueryList(`SELECT max(price) AS max_price FROM auction_table WHERE item_pk=${pk} `);
+        max_price = max_price?.result[0]?.max_price??0;
+
+        if (result_obj['item']['price'] < max_price) {
+            result_obj['item']['max_price'] = max_price;
+        }
+        for (var i = 0; i < result_obj['history'].length; i++) {
+            result_obj['history'][i]['note'] = await getStringHistoryByNum(
+                {
+                    nickname: history[i]?.user_nickname
+                },
+                result_obj['history'][i]?.type,
+                result_obj['history'][i]?.price,
+                result_obj['item'],
+            )
+        }
+
+        if (decode) {
+            let make_history = await insertItemHistory(decode, pk, 0, 0);
         }
         return response(req, res, 100, "success", result_obj)
     } catch (err) {
@@ -338,5 +468,7 @@ const getMyPays = async (req, res) => {
     }
 }
 module.exports = {
-    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct
+    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr,
+    onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct,
+    addAuction, deleteAuction
 };

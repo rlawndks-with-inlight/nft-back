@@ -52,6 +52,7 @@ const listFormatBySchema = async (schema, data_, decode) => {
                 }
             })
         }
+        
     }
     return data;
 }
@@ -72,6 +73,16 @@ const objFormatBySchema = async (schema, data_, decode) => {
             }else{
                 data['is_heart'] = false;
             }
+        }
+        let properties = await dbQueryList(`SELECT * FROM item_property_table WHERE status=1`);
+        properties = properties?.result;
+        let property_obj = {};
+        for(var i=0;i<properties.length;i++){
+            property_obj[properties[i]?.pk] = properties[i]
+        }
+        data['property_list'] = JSON.parse(data['property_list']);
+        for(var i = 0;i<data['property_list'].length;i++){
+            data['property_list'][i] = property_obj[data['property_list'][i]]??{};
         }
     }
     return data;
