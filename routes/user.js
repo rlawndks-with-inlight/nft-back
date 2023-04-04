@@ -91,13 +91,14 @@ const updateContract = async (req, res) => {
 }
 const getHomeContent = async (req, res) => {
     try {
-        
+
         let result_list = [];
         let sql_list = [
             { table: 'setting', sql: 'SELECT * FROM setting_table', type: 'obj' },
             { table: 'item_category', sql: `SELECT * FROM item_category_table WHERE status=1 ORDER BY sort DESC`, type: 'list' },
             { table: 'item', sql: `SELECT * FROM item_table WHERE status=1 ORDER BY sort DESC LIMIT 4`, type: 'list' },
             { table: 'user', sql: `SELECT * FROM user_table WHERE user_level=0 ORDER BY pk DESC LIMIT 12`, type: 'list' },
+
         ];
 
         for (var i = 0; i < sql_list.length; i++) {
@@ -148,6 +149,49 @@ const requestContractAppr = async (req, res) => {
         }
         let result = await insertQuery(`UPDATE contract_table SET ${getEnLevelByNum(request_level)}_pk=${user_pk} WHERE pk=${contract_pk}`);
         return response(req, res, 100, "success", []);
+    } catch (err) {
+        console.log(err)
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const addHeart = async (req, res) => {
+    try {
+        const { item_pk } = req.body;
+        const decode = checkLevel(req.cookies.token, 0);
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        let already_heart = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=? AND item_pk=? `,[decode?.pk, item_pk]);
+        already_heart = already_heart?.result;
+        if(already_heart.length > 0){
+            return response(req, res, -100, "이미 좋아요를 누른 상품입니다.", [])
+        }
+        let result = await insertQuery(`INSERT INTO heart_table (user_pk, item_pk) VALUES (?, ?)`,[decode?.pk, item_pk]);
+        return response(req, res, 100, "success", []);
+    } catch (err) {
+        console.log(err)
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const deleteHeart = async (req, res) => {
+    try {
+        const { item_pk } = req.body;
+        const decode = checkLevel(req.cookies.token, 0);
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        let result = await insertQuery(`DELETE FROM  heart_table WHERE user_pk=? AND item_pk=?`,[decode?.pk, item_pk]);
+        return response(req, res, 100, "success", []);
+
+    } catch (err) {
+        console.log(err)
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const getProduct = (req, res) =>{
+    try{
+        const {pk} = req.body;
+        
     } catch (err) {
         console.log(err)
         return response(req, res, -200, "서버 에러 발생", [])
@@ -281,5 +325,5 @@ const getMyPays = async (req, res) => {
     }
 }
 module.exports = {
-    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, onResetContractUser, onChangeCard, getCustomInfo, getMyPays
+    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct
 };

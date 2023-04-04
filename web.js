@@ -230,7 +230,8 @@ app.get('/api/item', async (req, res) => {
                 }else{
                         table = `${table}_table`;
                 }
-                let item = await dbQueryList(`SELECT * FROM ${table} WHERE pk=${pk}`);
+                let sql = `SELECT * FROM ${table} WHERE pk=${pk}`;
+                let item = await dbQueryList(sql);
                 item = item?.result[0];
 
                 if (only_my_item.includes(table)) {

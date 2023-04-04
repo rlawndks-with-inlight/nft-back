@@ -9,7 +9,7 @@ const {
     deleteItem, onResign, getMyItems, getMyItem, onSubscribe, updateSubscribe, getHeaderContent, onKeyrecieve, onNotiKiwoom, editContract, editPay, getGenealogy
 } = require('./common');
 const {
-    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, onResetContractUser, onChangeCard, getCustomInfo, getMyPays
+    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct
 } = require('./user');
 const image_list = [
     { name: 'master' },
@@ -99,5 +99,8 @@ router.post('/updatesubscribe', updateSubscribe);
 router.get('/mypays', getMyPays);
 router.post('/contract/:edit_category', editContract);
 router.post('/pay/:edit_category', editPay);
+router.post('/heart', addHeart);
+router.post('/deleteheart', deleteHeart);
+router.get('/product', getProduct);
 
 module.exports = router;
