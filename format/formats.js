@@ -93,9 +93,19 @@ const sqlJoinFormat = (schema, sql_, order_, page_sql_, where_str_, decode) => {
     let order = order_;
     let where_str = where_str_;
     if(schema=='item'){
+        let columns = [
+            'item_table.*',
+            '(SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count',
+            'item_category_table.name AS category_name',
+            'user_table.nickname AS nickname',
+            'user_table.profile_img AS user_profile_img',
+            'wallet_table.img_src AS wallet_img',
+            'wallet_table.unit AS wallet_unit',
+            'wallet_table.name AS wallet_name',
+        ]
         page_sql += ` LEFT JOIN item_category_table ON item_table.category_pk=item_category_table.pk `;
         page_sql += ` LEFT JOIN user_table ON item_table.user_pk=user_table.pk `;
-        sql = ` SELECT item_table.*, (SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count, item_category_table.name AS category_name, user_table.nickname AS nickname, user_table.profile_img AS user_profile_img, wallet_table.img_src AS wallet_img, wallet_table.unit AS wallet_unit  FROM item_table`;
+        sql = ` SELECT ${columns.join()} FROM item_table`;
         sql += ` LEFT JOIN item_category_table ON item_table.category_pk=item_category_table.pk `;
         sql += ` LEFT JOIN user_table ON item_table.user_pk=user_table.pk `;
         sql += ` LEFT JOIN wallet_table ON item_table.wallet_pk=wallet_table.pk `;

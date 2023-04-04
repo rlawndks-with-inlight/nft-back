@@ -273,7 +273,6 @@ const getProduct = async (req, res) => {
         let items_sql = await sqlJoinFormat('item');
         items_sql = items_sql?.sql;
         items_sql += ` ORDER BY sort DESC LIMIT 4 `
-        let items = await dbQueryList(items_sql);
 
         let history_sql = ` SELECT history_table.*, user_table.nickname AS user_nickname, user_table.profile_img AS user_profile_img `
         history_sql += ` FROM history_table `
@@ -330,12 +329,59 @@ const getProduct = async (req, res) => {
                 result_obj['item'],
             )
         }
-
+        await db.beginTransaction();
         if (decode) {
             let make_history = await insertItemHistory(decode, pk, 0, 0);
         }
+        let view = insertQuery(`UPDATE item_table SET views=views+1 WHERE pk=?`,[pk]);
+
+        await db.commit();
         return response(req, res, 100, "success", result_obj)
     } catch (err) {
+        console.log(err)
+        await db.rollback();
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const getDashBoard = async (req, res) =>{
+    try{
+        const decode = checkLevel(req.cookies.token, 0);
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        let result_list = [];
+
+        let items_sql = await sqlJoinFormat('item');
+        items_sql = items_sql?.sql;
+        items_sql += ` ORDER BY sort DESC `;
+
+        let sql_list = [
+            { table: 'setting', sql: 'SELECT * FROM setting_table', type: 'obj' },
+            { table: 'item_category', sql: `SELECT * FROM item_category_table WHERE status=1 ORDER BY sort DESC`, type: 'list' },
+            { table: 'item', sql: `SELECT * FROM item_table WHERE status=1 ORDER BY sort DESC LIMIT 4`, type: 'list' },
+            { table: 'items', sql: items_sql, type: 'list' },
+            { table: 'wallets', sql: `SELECT * FROM wallet_table ORDER BY sort DESC`, type: 'list' },
+        ];
+
+        for (var i = 0; i < sql_list.length; i++) {
+            result_list.push(queryPromise(sql_list[i]?.table, sql_list[i]?.sql));
+        }
+        for (var i = 0; i < result_list.length; i++) {
+            await result_list[i];
+        }
+        let result_obj = {};
+        for (var i = 0; i < sql_list.length; i++) {
+            result_list.push(queryPromise(sql_list[i].table, sql_list[i].sql, sql_list[i].type));
+        }
+        for (var i = 0; i < result_list.length; i++) {
+            await result_list[i];
+        }
+        let result = (await when(result_list));
+        for (var i = 0; i < (await result).length; i++) {
+            result_obj[(await result[i])?.table] = (await result[i])?.data;
+        }
+        return response(req, res, 100, "success", result_obj)
+    }catch (err) {
         console.log(err)
         return response(req, res, -200, "서버 에러 발생", [])
     }
@@ -470,5 +516,5 @@ const getMyPays = async (req, res) => {
 module.exports = {
     addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr,
     onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct,
-    addAuction, deleteAuction
+    addAuction, deleteAuction, getDashBoard
 };

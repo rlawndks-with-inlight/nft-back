@@ -9,9 +9,9 @@ const {
     deleteItem, onResign, getMyItems, getMyItem, onSubscribe, updateSubscribe, getHeaderContent, onKeyrecieve, onNotiKiwoom, editContract, editPay, getGenealogy
 } = require('./common');
 const {
-    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr, 
+    addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr,
     onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct,
-    addAuction, deleteAuction
+    addAuction, deleteAuction, getDashBoard
 } = require('./user');
 const image_list = [
     { name: 'master' },
@@ -64,6 +64,7 @@ router.post('/myitem', getMyItem);
 router.get('/getallposts', getAllPosts);
 router.get('/getuserstatistics', getUserStatistics);
 router.get('/gethomecontent', getHomeContent);
+router.get('/getdashboard', getDashBoard);
 router.get('/getheadercontent', getHeaderContent);
 router.get('/getmyinfo', getMyInfo);
 router.get('/customer-info', getCustomInfo);
