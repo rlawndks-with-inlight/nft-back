@@ -1,6 +1,7 @@
+const { dbQueryList } = require("../query-util");
 const { commarNumber, getEnLevelByNum } = require("../util");
 
-const listFormatBySchema = (schema, data_) => {
+const listFormatBySchema = async (schema, data_, decode) => {
 
     let data = [...data_];
 
@@ -36,6 +37,43 @@ const listFormatBySchema = (schema, data_) => {
             data[i]['period'] = `${data[i]?.start_date} ~ ${data[i]?.end_date}`
         }
     }
+    if(schema=='item'){
+        if(decode){
+            let item_user_connect_list = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=?`,[decode?.pk]);
+            item_user_connect_list = item_user_connect_list?.result;
+            item_user_connect_list = item_user_connect_list.map(item=>{
+             return item?.item_pk   
+            })
+            data = data.map(item=>{
+                if(item_user_connect_list.includes(item?.pk)){
+                    return {...item, is_heart:true}
+                }else{
+                    return {...item, is_heart:false}
+                }
+            })
+        }
+    }
+    return data;
+}
+const objFormatBySchema = async (schema, data_, decode) => {
+
+    let data = {...data_};
+
+    let option_list = {};
+    if(schema=='item'){
+        if(decode){
+            let item_user_connect_list = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=?`,[decode?.pk]);
+            item_user_connect_list = item_user_connect_list?.result;
+            item_user_connect_list = item_user_connect_list.map(item=>{
+             return item?.item_pk   
+            })
+            if(item_user_connect_list.includes(data?.pk)){
+                data['is_heart'] = true;
+            }else{
+                data['is_heart'] = false;
+            }
+        }
+    }
     return data;
 }
 const sqlJoinFormat = (schema, sql_, order_, page_sql_, where_str_, decode) => {
@@ -46,7 +84,7 @@ const sqlJoinFormat = (schema, sql_, order_, page_sql_, where_str_, decode) => {
     if(schema=='item'){
         page_sql += ` LEFT JOIN item_category_table ON item_table.category_pk=item_category_table.pk `;
         page_sql += ` LEFT JOIN user_table ON item_table.user_pk=user_table.pk `;
-        sql = ` SELECT item_table.*, item_category_table.name AS category_name, user_table.nickname AS nickname, user_table.profile_img AS user_profile_img, wallet_table.img_src AS wallet_img, wallet_table.unit AS wallet_unit  FROM item_table`;
+        sql = ` SELECT item_table.*, (SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count, item_category_table.name AS category_name, user_table.nickname AS nickname, user_table.profile_img AS user_profile_img, wallet_table.img_src AS wallet_img, wallet_table.unit AS wallet_unit  FROM item_table`;
         sql += ` LEFT JOIN item_category_table ON item_table.category_pk=item_category_table.pk `;
         sql += ` LEFT JOIN user_table ON item_table.user_pk=user_table.pk `;
         sql += ` LEFT JOIN wallet_table ON item_table.wallet_pk=wallet_table.pk `;
@@ -122,7 +160,7 @@ const myItemSqlJoinFormat = (schema, sql_, order_, page_sql_) => {
     }
 }
 module.exports = {
-    listFormatBySchema, sqlJoinFormat, myItemSqlJoinFormat
+    listFormatBySchema, sqlJoinFormat, myItemSqlJoinFormat, objFormatBySchema
 };
 // const sqlJoinFormat = (schema, sql_, page_sql_) => {
 //     let sql = sql_;

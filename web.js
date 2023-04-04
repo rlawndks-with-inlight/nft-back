@@ -35,6 +35,7 @@ const schedule = require('node-schedule');
 const path = require('path');
 const { insertQuery } = require('./query-util')
 const { getItem } = require('./routes/common')
+const { objFormatBySchema } = require('./format/formats')
 app.set('/routes', __dirname + '/routes');
 app.use('/config', express.static(__dirname + '/config'));
 //app.use('/image', express.static('./upload'));
@@ -242,6 +243,7 @@ app.get('/api/item', async (req, res) => {
                                 }
                         }
                 }
+                item = objFormatBySchema(table, item, decode)
                 return response(req, res, 100, "success", item);
         }
         catch (err) {

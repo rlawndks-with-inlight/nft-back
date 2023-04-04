@@ -36,7 +36,7 @@ const pwBytes = 64
 const jwtSecret = "djfudnsqlalfKeyFmfRkwu"
 const { format, formatDistance, formatRelative, subDays } = require('date-fns')
 const geolocation = require('geolocation')
-const { sqlJoinFormat, listFormatBySchema, myItemSqlJoinFormat } = require('../format/formats')
+const { sqlJoinFormat, listFormatBySchema, myItemSqlJoinFormat, objFormatBySchema } = require('../format/formats')
 const { param } = require('jquery')
 const kakaoOpt = {
     clientId: '4a8d167fa07331905094e19aafb2dc47',
@@ -161,7 +161,7 @@ const addHeart = async (req, res) => {
         if (!decode) {
             return response(req, res, -150, "권한이 없습니다.", []);
         }
-        let already_heart = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=? AND item_pk=? `,[decode?.pk, item_pk]);
+        let already_heart = await dbQueryList(`SELECT * FROM heart_table WHERE user_pk=${decode?.pk} AND item_pk=${item_pk} `);
         already_heart = already_heart?.result;
         if(already_heart.length > 0){
             return response(req, res, -100, "이미 좋아요를 누른 상품입니다.", [])
@@ -180,7 +180,7 @@ const deleteHeart = async (req, res) => {
         if (!decode) {
             return response(req, res, -150, "권한이 없습니다.", []);
         }
-        let result = await insertQuery(`DELETE FROM  heart_table WHERE user_pk=? AND item_pk=?`,[decode?.pk, item_pk]);
+        let result = await insertQuery(`DELETE FROM heart_table WHERE user_pk=? AND item_pk=?`,[decode?.pk, item_pk]);
         return response(req, res, 100, "success", []);
 
     } catch (err) {
@@ -188,10 +188,23 @@ const deleteHeart = async (req, res) => {
         return response(req, res, -200, "서버 에러 발생", [])
     }
 }
-const getProduct = (req, res) =>{
+const getProduct = async (req, res) =>{
     try{
-        const {pk} = req.body;
-        
+        const decode = checkLevel(req.cookies.token, 0);
+        const {pk} = req.query;
+
+        let item_sql = `SELECT item_table.*, (SELECT COUNT(*) FROM heart_table WHERE item_pk=item_table.pk) AS heart_count, u_t.nickname AS user_nickname, o_t.nickname AS owner_nickname `;
+        item_sql += ` FROM item_table `;
+        item_sql += ` LEFT JOIN user_table AS u_t ON item_table.user_pk=u_t.pk `;
+        item_sql += ` LEFT JOIN user_table AS o_t ON item_table.user_pk=o_t.pk `;
+        item_sql += ` WHERE item_table.pk=${pk} `
+        let item = await dbQueryList(item_sql);
+        item = item?.result[0];
+        item = await objFormatBySchema('item',item,decode);
+        let result_obj = {
+            item:item,
+        }
+        return response(req, res, 100, "success", result_obj)
     } catch (err) {
         console.log(err)
         return response(req, res, -200, "서버 에러 발생", [])

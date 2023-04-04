@@ -1721,7 +1721,7 @@ const getItems = async (req, res) => {
             let result = get_result?.result;
 
             let want_use_count = ['user', 'comment'];
-            result = await listFormatBySchema(table, result);
+            result = await listFormatBySchema(table, result, decode);
             let maxPage = page_result[0]['COUNT(*)'] % page_cut == 0 ? (page_result[0]['COUNT(*)'] / page_cut) : ((page_result[0]['COUNT(*)'] - page_result[0]['COUNT(*)'] % page_cut) / page_cut + 1);
             let option_obj = await getOptionObjBySchema(table, whereStr);
             if (want_use_count.includes(table)) {
@@ -1735,7 +1735,7 @@ const getItems = async (req, res) => {
         } else {
             let get_result = await getItemsReturnBySchema(sql, pageSql, table, req?.body);
             let result = get_result?.result;
-            result = await listFormatBySchema(table, result);
+            result = await listFormatBySchema(table, result, decode);
             return response(req, res, 100, "success", result);
         }
     } catch (err) {
