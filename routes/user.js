@@ -211,10 +211,12 @@ const addAuction = async (req, res) => {
             return response(req, res, -100, "이미 경매한 상품입니다.", [])
         }
         let item = await dbQueryList(`SELECT * FROM item_table WHERE pk=${item_pk}`);
-        console.log(item)
         item = item?.result[0];
         if (price < item?.price) {
             return response(req, res, -100, "최소 입찰 가격 이상으로 신청해 주세요.", [])
+        }
+        if(item?.end_date < returnMoment().substring(0, 10)){
+            return response(req, res, -100, "이미 마감된 경매상품 입니다.", [])
         }
         await db.beginTransaction();
         let make_history = await insertItemHistory(decode, item_pk, 10, price);
@@ -243,6 +245,31 @@ const deleteAuction = async (req, res) => {
         await db.commit();
         return response(req, res, 100, "success", []);
 
+    } catch (err) {
+        console.log(err)
+        db.rollback();
+        return response(req, res, -200, "서버 에러 발생", [])
+    }
+}
+const onBuy = async (req, res) => {
+    try {
+        const { item_pk } = req.body;
+        console.log(req.body)
+        const decode = checkLevel(req.cookies.token, 0);
+        if (!decode) {
+            return response(req, res, -150, "권한이 없습니다.", []);
+        }
+        
+        let item = await dbQueryList(`SELECT * FROM item_table WHERE pk=${item_pk}`);
+        item = item?.result[0];
+        if(item?.owner_pk>0){
+            return response(req, res, -200, "이미 다른 유저가 구매한 상품 입니다.", [])
+        }
+        await db.beginTransaction();
+        let update_owner = await insertQuery(`UPDATE item_table SET owner_pk=? WHERE pk=?`,[decode?.pk, item_pk]);
+        let make_history = await insertItemHistory(decode, item_pk, 25, item?.price);
+        await db.commit();
+        return response(req, res, 100, "success", []);
     } catch (err) {
         console.log(err)
         db.rollback();
@@ -312,12 +339,13 @@ const getProduct = async (req, res) => {
         let wallet = await dbQueryList(`SELECT * FROM wallet_table WHERE pk=${result_obj['item']?.wallet_pk}`);
         wallet = wallet?.result[0];
         result_obj['item']['wallet'] = wallet;
-
-        let max_price = await dbQueryList(`SELECT max(price) AS max_price FROM auction_table WHERE item_pk=${pk} `);
-        max_price = max_price?.result[0]?.max_price??0;
-
-        if (result_obj['item']['price'] < max_price) {
-            result_obj['item']['max_price'] = max_price;
+        let max_price = result_obj['item']['price'];
+        if(result_obj['item']?.type==1){
+            max_price = await dbQueryList(`SELECT max(price) AS max_price FROM auction_table WHERE item_pk=${pk} `);
+            max_price = max_price?.result[0]?.max_price??0;
+            if (result_obj['item']['price'] < max_price) {
+                result_obj['item']['max_price'] = max_price;
+            }
         }
         for (var i = 0; i < result_obj['history'].length; i++) {
             result_obj['history'][i]['note'] = await getStringHistoryByNum(
@@ -517,5 +545,5 @@ const getMyPays = async (req, res) => {
 module.exports = {
     addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr,
     onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct,
-    addAuction, deleteAuction, getDashBoard
+    addAuction, deleteAuction, getDashBoard, onBuy
 };

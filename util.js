@@ -434,7 +434,7 @@ const getKoLevelByNum = (num) => {
         return '개발자';
 }
 const commarNumber = (num) => {
-    if(num > 0 && num < 0.000001){
+    if (num > 0 && num < 0.000001) {
         return "0.00";
     }
     if (!num && num != 0) {
@@ -548,7 +548,7 @@ const insertItemHistory = async (decode, item_pk, type, price) => {
     let querstions = getQuestions(result_keys.length)
     let result = await insertQuery(`INSERT INTO history_table (${result_keys.join()}) VALUES (${querstions.join()})`, values);
 }
-const getStringHistoryByNum = (user, num, price, item) => {
+const getStringHistoryByNum = (user, num, price, item, is_detail) => {
     if (num == 0)
         return `${user?.nickname} 이(가) 상품을 조회 하였습니다.`;
     else if (num == 5)
@@ -563,6 +563,10 @@ const getStringHistoryByNum = (user, num, price, item) => {
         return `상품이 수정 되었습니다.`
     else if (num == 20)
         return `상품이 마감 되었습니다.`
+    else if (num == 25)
+        return `${user?.nickname} 이(가) 상품을 ${commarNumber(price)} ${item?.wallet?.unit}에 구매 하였습니다.`
+    else if (num == 26)
+        return `${user?.nickname} 이(가) 상품을 구매 취소 하였습니다.`
     else
         return '---'
 }

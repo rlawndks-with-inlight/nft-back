@@ -80,7 +80,7 @@ overFiveTime = overFiveTime.getTime();
 
 const scheduleSystem = () => {
         let use_alarm = false;
-        let use_create_pay = true;
+        let use_auction = true;
         schedule.scheduleJob('0 0/1 * * * *', async function () {
                 let return_moment = returnMoment()
                 console.log(return_moment)
@@ -105,44 +105,48 @@ const scheduleSystem = () => {
                                 }
                         }
                 }
-                if (use_create_pay) {
-                        if (return_moment.includes('00:00:00')) {//매일 00시
-                                let return_moment_list = return_moment.substring(0, 10).split('-');
-                                let pay_day = parseInt(return_moment_list[2]);
-
-                                let contracts = await dbQueryList(`SELECT * FROM v_contract WHERE end_date >= '${return_moment.substring(0, 10)}'`);
-                                contracts = contracts?.result;
-                                let pays = await dbQueryList(`SELECT contract_pk, MAX(day) as max_day FROM v_pay WHERE pay_category=0 group by contract_pk`);
-                                pays = pays?.result;
-                                let pay_obj = {};
-                                for (var i = 0; i < pays.length; i++) {
-                                        pay_obj[`${pays[i]?.contract_pk}-${pays[i]?.max_day}`] = true;
-                                }
-                                let pay_list = [];
-                                for (var i = 0; i < contracts.length; i++) {
-                                        if (contracts[i]?.pay_day == pay_day && !pay_obj[`${contracts[i]?.pk}-${return_moment.substring(0, 10)}`]) {
-                                                pay_list.push(
-                                                        [
-                                                                contracts[i][`${getEnLevelByNum(0)}_pk`],
-                                                                contracts[i][`${getEnLevelByNum(5)}_pk`],
-                                                                contracts[i][`${getEnLevelByNum(10)}_pk`],
-                                                                contracts[i][`monthly`],
-                                                                0,
-                                                                0,
-                                                                contracts[i][`pk`],
-                                                                return_moment.substring(0, 10)
-                                                        ]
-                                                )
-                                        }
-                                }
-                                if (pay_list.length > 0) {
-                                        let result = await insertQuery(`INSERT pay_table (${getEnLevelByNum(0)}_pk, ${getEnLevelByNum(5)}_pk, ${getEnLevelByNum(10)}_pk, price, pay_category, status, contract_pk, day) VALUES ?`, [pay_list]);
-                                }
-
+                if (use_auction) {
+                        if (return_moment.includes('11:59:00')) {//매일 11:59시
+                                deadlineAuction(return_moment);
                         }
                 }
         })
 
+}
+const deadlineAuction = async (return_moment) => {
+        let items = await dbQueryList(`SELECT *, 0 AS max_price, 0 AS winner_pk FROM item_table WHERE type=1 AND owner_pk=0 AND end_date<='${return_moment.substring(0, 10)}' ORDER BY pk ASC`);
+        items = items?.result;
+        let items_obj = {};
+        for (var i = 0; i < items.length; i++) {
+                items_obj[items[i]?.pk] = items[i];
+        }
+        if (items.length > 0) {
+                let item_pk_list = items.map(item => {
+                        return item?.pk
+                })
+                let auction_hitory = await dbQueryList(`SELECT * FROM auction_table WHERE item_pk IN (${item_pk_list.join()})`);
+                auction_hitory = auction_hitory?.result;
+                for (var i = 0; i < auction_hitory.length; i++) {
+                        if (items_obj[auction_hitory[i]?.item_pk]?.max_price < auction_hitory[i]?.price) {
+                                items_obj[auction_hitory[i]?.item_pk]['max_price'] = auction_hitory[i]?.price;
+                                items_obj[auction_hitory[i]?.item_pk]['winner_pk'] = auction_hitory[i]?.user_pk;
+                        }
+                }
+                console.log(items_obj)
+                let sql_list = [];
+                for (var i = 0; i < items.length; i++) {
+                        if (items_obj[items[i]?.pk]?.winner_pk > 0 && items_obj[items[i]?.pk]?.max_price > 0) {
+                                sql_list.push({
+                                        item_pk: items[i]?.pk,
+                                        user_pk: items_obj[items[i]?.pk]?.winner_pk
+                                })
+                        }
+
+                }
+                for (var i = 0; i < sql_list.length; i++) {
+                        let result = await insertQuery(`UPDATE item_table SET owner_pk=? WHERE pk=?`,[sql_list[i].user_pk,sql_list[i].item_pk,]);
+                }
+        }
 }
 
 let server = undefined
@@ -226,9 +230,9 @@ app.get('/api/item', async (req, res) => {
                 if (community_list.includes(table)) {
                         let community_add_view = await insertQuery(`UPDATE ${table}_table SET views=views+1 WHERE pk=?`, [pk]);
                 }
-                if(only_my_item.includes(table)){
+                if (only_my_item.includes(table)) {
                         table = `v_${table}`;
-                }else{
+                } else {
                         table = `${table}_table`;
                 }
                 let sql = `SELECT * FROM ${table} WHERE pk=${pk}`;
@@ -237,7 +241,7 @@ app.get('/api/item', async (req, res) => {
 
                 if (only_my_item.includes(table)) {
                         if (decode?.user_level < 40) {
-                                if(item[`${getEnLevelByNum(decode?.user_level)}_pk`] != decode?.pk){
+                                if (item[`${getEnLevelByNum(decode?.user_level)}_pk`] != decode?.pk) {
                                         await db.rollback();
                                         return response(req, res, -150, "권한이 없습니다.", []);
                                 }

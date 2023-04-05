@@ -11,7 +11,7 @@ const {
 const {
     addContract, getHomeContent, updateContract, requestContractAppr, confirmContractAppr,
     onResetContractUser, onChangeCard, getCustomInfo, getMyPays, addHeart, deleteHeart, getProduct,
-    addAuction, deleteAuction, getDashBoard
+    addAuction, deleteAuction, getDashBoard, onBuy
 } = require('./user');
 const image_list = [
     { name: 'master' },
@@ -105,6 +105,7 @@ router.post('/pay/:edit_category', editPay);
 router.post('/heart', addHeart);
 router.post('/deleteheart', deleteHeart);
 router.post('/auction', addAuction);
+router.post('/buy', onBuy);
 router.post('/deleteauction', deleteAuction);
 router.get('/product', getProduct);
 
