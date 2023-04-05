@@ -361,6 +361,7 @@ const getDashBoard = async (req, res) =>{
             { table: 'item', sql: `SELECT * FROM item_table WHERE status=1 ORDER BY sort DESC LIMIT 4`, type: 'list' },
             { table: 'items', sql: items_sql, type: 'list' },
             { table: 'wallets', sql: `SELECT * FROM wallet_table ORDER BY sort DESC`, type: 'list' },
+            { table: 'hearts', sql: `SELECT * FROM heart_table WHERE user_pk=${decode?.pk} ORDER BY pk DESC`, type: 'list' },
         ];
 
         for (var i = 0; i < sql_list.length; i++) {
