@@ -562,7 +562,7 @@ const getStringHistoryByNum = (user, num, price, item, is_detail) => {
     else if (num == 15)
         return `상품이 수정 되었습니다.`
     else if (num == 20)
-        return `상품이 마감 되었습니다.`
+        return `상품 경매가 마감 되었습니다.`
     else if (num == 25)
         return `${user?.nickname} 이(가) 상품을 ${commarNumber(price)} ${item?.wallet?.unit}에 구매 하였습니다.`
     else if (num == 26)

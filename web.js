@@ -18,7 +18,8 @@ const jwt = require('jsonwebtoken')
 const { checkLevel, logRequestResponse, isNotNullOrUndefined,
         namingImagesPath, nullResponse, lowLevelResponse, response,
         returnMoment, sendAlarm, categoryToNumber, tooMuchRequest,
-        getEnLevelByNum } = require('./util')
+        getEnLevelByNum, 
+        insertItemHistory} = require('./util')
 app.use(bodyParser.json({ limit: '100mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '100mb' }));
 //multer
@@ -120,6 +121,12 @@ const deadlineAuction = async (return_moment) => {
         for (var i = 0; i < items.length; i++) {
                 items_obj[items[i]?.pk] = items[i];
         }
+        let users = await dbQueryList(`SELECT * FROM user_table `);
+        users = users?.result;
+        let users_obj = {};
+        for (var i = 0; i < users.length; i++) {
+                users_obj[users[i]?.pk] = users[i];
+        }
         if (items.length > 0) {
                 let item_pk_list = items.map(item => {
                         return item?.pk
@@ -145,6 +152,7 @@ const deadlineAuction = async (return_moment) => {
                 }
                 for (var i = 0; i < sql_list.length; i++) {
                         let result = await insertQuery(`UPDATE item_table SET owner_pk=? WHERE pk=?`,[sql_list[i].user_pk,sql_list[i].item_pk,]);
+                        let make_history = await insertItemHistory(users_obj[sql_list[i].user_pk], sql_list[i].item_pk, 20, 0);
                 }
         }
 }

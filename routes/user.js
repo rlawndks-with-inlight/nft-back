@@ -305,8 +305,6 @@ const getProduct = async (req, res) => {
         history_sql += ` FROM history_table `
         history_sql += ` LEFT JOIN user_table ON history_table.user_pk=user_table.pk `;
         history_sql += ` WHERE item_pk=${pk} ORDER BY pk DESC `;
-        let history = await dbQueryList(history_sql);
-        history = history?.result;
 
         let sql_list = [
             { table: 'item', sql: item_sql, type: 'obj' },
@@ -350,7 +348,7 @@ const getProduct = async (req, res) => {
         for (var i = 0; i < result_obj['history'].length; i++) {
             result_obj['history'][i]['note'] = await getStringHistoryByNum(
                 {
-                    nickname: history[i]?.user_nickname
+                    nickname: result_obj['history'][i]?.user_nickname
                 },
                 result_obj['history'][i]?.type,
                 result_obj['history'][i]?.price,
@@ -382,11 +380,13 @@ const getDashBoard = async (req, res) =>{
         let items_sql = await sqlJoinFormat('item');
         items_sql = items_sql?.sql;
         items_sql += ` ORDER BY sort DESC `;
-
+        let history_sql = ` SELECT history_table.*, user_table.nickname AS user_nickname, user_table.profile_img AS user_profile_img `
+        history_sql += ` FROM history_table `
+        history_sql += ` LEFT JOIN user_table ON history_table.user_pk=user_table.pk `;
+        history_sql += ` ORDER BY pk DESC `;
         let sql_list = [
             { table: 'setting', sql: 'SELECT * FROM setting_table', type: 'obj' },
-            { table: 'item_category', sql: `SELECT * FROM item_category_table WHERE status=1 ORDER BY sort DESC`, type: 'list' },
-            { table: 'item', sql: `SELECT * FROM item_table WHERE status=1 ORDER BY sort DESC LIMIT 4`, type: 'list' },
+            { table: 'history', sql: history_sql, type: 'list' },
             { table: 'items', sql: items_sql, type: 'list' },
             { table: 'wallets', sql: `SELECT * FROM wallet_table ORDER BY sort DESC`, type: 'list' },
             { table: 'hearts', sql: `SELECT * FROM heart_table WHERE user_pk=${decode?.pk} ORDER BY pk DESC`, type: 'list' },
