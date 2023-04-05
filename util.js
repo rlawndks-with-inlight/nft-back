@@ -550,23 +550,23 @@ const insertItemHistory = async (decode, item_pk, type, price) => {
 }
 const getStringHistoryByNum = (user, num, price, item, is_detail) => {
     if (num == 0)
-        return `${user?.nickname} 이(가) 상품을 조회 하였습니다.`;
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품을 조회 하였습니다.`;
     else if (num == 5)
-        return `${user?.nickname} 이(가) 상품에 좋아요를 눌렀습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품에 좋아요를 눌렀습니다.`
     else if (num == 6)
-        return `${user?.nickname} 이(가) 상품 좋아요를 취소 하였습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품 좋아요를 취소 하였습니다.`
     else if (num == 10)
-        return `${user?.nickname} 이(가) 상품을 ${commarNumber(price)} ${item?.wallet?.unit}에 경매 하였습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품을 ${commarNumber(price)} ${is_detail ? item?.wallet_unit : item?.wallet?.unit}에 경매 하였습니다.`
     else if (num == 11)
-        return `${user?.nickname} 이(가) 상품 경매를 취소 하였습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품 경매를 취소 하였습니다.`
     else if (num == 15)
-        return `상품이 수정 되었습니다.`
+        return ` ${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품이 수정 되었습니다.`
     else if (num == 20)
-        return `상품 경매가 마감 되었습니다.`
+        return ` ${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품 경매가 마감 되었습니다.`
     else if (num == 25)
-        return `${user?.nickname} 이(가) 상품을 ${commarNumber(price)} ${item?.wallet?.unit}에 구매 하였습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품을 ${commarNumber(price)} ${is_detail ? item?.wallet_unit : item?.wallet?.unit}에 구매 하였습니다.`
     else if (num == 26)
-        return `${user?.nickname} 이(가) 상품을 구매 취소 하였습니다.`
+        return `${is_detail ? '' : `${user?.nickname} 이(가) `}${is_detail ? `${item?.name}#${item?.pk}` : ''} 상품을 구매 취소 하였습니다.`
     else
         return '---'
 }

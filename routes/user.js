@@ -98,7 +98,6 @@ const getHomeContent = async (req, res) => {
             { table: 'item_category', sql: `SELECT * FROM item_category_table WHERE status=1 ORDER BY sort DESC`, type: 'list' },
             { table: 'item', sql: `SELECT * FROM item_table WHERE status=1 ORDER BY sort DESC LIMIT 4`, type: 'list' },
             { table: 'user', sql: `SELECT * FROM user_table WHERE user_level=0 ORDER BY pk DESC LIMIT 12`, type: 'list' },
-
         ];
 
         for (var i = 0; i < sql_list.length; i++) {
@@ -383,6 +382,7 @@ const getDashBoard = async (req, res) =>{
         let history_sql = ` SELECT history_table.*, user_table.nickname AS user_nickname, user_table.profile_img AS user_profile_img `
         history_sql += ` FROM history_table `
         history_sql += ` LEFT JOIN user_table ON history_table.user_pk=user_table.pk `;
+        history_sql += ` LEFT JOIN item_table ON history_table.item_pk=item_table.pk `;
         history_sql += ` ORDER BY pk DESC `;
         let sql_list = [
             { table: 'setting', sql: 'SELECT * FROM setting_table', type: 'obj' },
@@ -408,6 +408,22 @@ const getDashBoard = async (req, res) =>{
         let result = (await when(result_list));
         for (var i = 0; i < (await result).length; i++) {
             result_obj[(await result[i])?.table] = (await result[i])?.data;
+        }
+        let items_obj = {};
+        for (var i = 0; i < result_obj['items'].length; i++) {
+            items_obj[result_obj['items'][i]?.pk] = result_obj['items'][i];
+        }
+        for (var i = 0; i < result_obj['history'].length; i++) {
+            console.log(items_obj[result_obj['history'][i]?.item_pk])
+            result_obj['history'][i]['note'] = await getStringHistoryByNum(
+                {
+                    nickname: result_obj['history'][i]?.user_nickname
+                },
+                result_obj['history'][i]?.type,
+                result_obj['history'][i]?.price,
+                items_obj[result_obj['history'][i]?.item_pk],
+                true
+            )
         }
         return response(req, res, 100, "success", result_obj)
     }catch (err) {
